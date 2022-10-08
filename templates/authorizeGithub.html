@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Flask OAuth Tests</title>
+</head>
+
+<body>
+    <h1>Welcome to the protected Area!</h1>
+    
+    {{ resp }}
+    {{ profile }}
+
+    <a href="{{url_for('logout')}}">Logout</a>
+</body>
+
+</html>

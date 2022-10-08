@@ -1,4 +1,3 @@
-import bcrypt
 from flask import Flask, render_template, request, redirect, url_for
 
 ##Flask Login
@@ -15,6 +14,15 @@ from wtforms.validators import InputRequired, Length, ValidationError
 ##Password Hash
 from flask_bcrypt import Bcrypt
 
+##Environemnt Variables
+from os import getenv
+from dotenv import load_dotenv
+
+import requests
+
+
+##OAuth
+from authlib.integrations.flask_client import OAuth
 
 ## Create Application
 app = Flask(__name__)
@@ -24,6 +32,21 @@ app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
 app.config["SECRET_KEY"] = "secret"
 
+
+##OAuth
+oauth = OAuth(app)
+
+github = oauth.register(
+    name='github',
+    client_id=getenv("GITHUB_CLIENT_ID"),
+    client_secret=getenv("GITHUB_SECRET_ID"),
+    access_token_url='https://github.com/login/oauth/access_token',
+    access_token_params=None,
+    authorize_url='https://github.com/login/oauth/authorize',
+    authorize_params=None,
+    api_base_url='https://api.github.com/',
+    client_kwargs={'scope': 'read:user'},
+)
 
 ##Initialize Dependencies
 db = SQLAlchemy(app)
@@ -46,7 +69,8 @@ def load_user(user_id):
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(20), nullable=False, unique=True)
-    password = db.Column(db.String(80), nullable=False)
+    password = db.Column(db.String(80), nullable=True)
+    access_token = db.Column(db.String(100), nullable=True)
 
 
 ##Sign Up Form
@@ -130,6 +154,51 @@ def logout():
     logout_user()
     
     return redirect(url_for("login"))
+
+@app.route("/login/github")
+def login_github():
+    github = oauth.create_client("github")
+
+    redirect_url = url_for("authorize_github", _external=True)
+
+    return github.authorize_redirect(redirect_url)
+
+@app.route("/login/github/authorize")
+def authorize_github():
+    github = oauth.create_client("github")
+
+    token = github.authorize_access_token()
+    print(f"\nToken: {token}\n")
+
+    #Load users data
+    url = 'https://api.github.com/user'
+    access_token = "token " + token["access_token"]
+    headers = {"Authorization": access_token}
+
+    resp = requests.get(url=url, headers=headers)
+
+    user_data = resp.json()
+    user_name = user_data["login"]
+    print(f"\nUsername: {user_name}\n")
+
+    existing_user = User.query.filter_by(
+            username=user_name).first()
+    if existing_user:
+        existing_user.access_token = access_token
+        db.session.commit()
+        
+        login_user(existing_user)
+
+        return redirect(url_for("protected"))
+
+    new_user = User(username=user_name, access_token=token["access_token"])
+
+    db.session.add(new_user)
+    db.session.commit()
+
+    login_user(new_user)
+
+    return redirect(url_for("protected"))
 
 @app.route("/protected")
 @login_required
