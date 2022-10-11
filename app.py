@@ -48,6 +48,15 @@ github = oauth.register(
     client_kwargs={'scope': 'read:user'},
 )
 
+own_server = oauth.register(
+    name='own',
+    client_id=getenv('OWN_CLIENT_ID'),
+    client_secret=getenv('OWN_SECRET_ID'),
+    access_token_url='http://127.0.0.1:5002/oauth/token',
+    access_token_params=None,
+    authorize_url='http://127.0.0.1:5002/oauth/authorize',
+    api_base_url='http://127.0.0.1:5002/'
+)
 ##Initialize Dependencies
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
@@ -157,7 +166,8 @@ def logout():
 
 @app.route("/login/github")
 def login_github():
-    github = oauth.create_client("github")
+    #github = oauth.create_client("github")
+    github = oauth.create_client("own")
 
     redirect_url = url_for("authorize_github", _external=True)
 
@@ -165,20 +175,24 @@ def login_github():
 
 @app.route("/login/github/authorize")
 def authorize_github():
-    github = oauth.create_client("github")
+    #github = oauth.create_client("github")
+    github = oauth.create_client("own")
 
     token = github.authorize_access_token()
     print(f"\nToken: {token}\n")
 
     #Load users data
-    url = 'https://api.github.com/user'
-    access_token = "token " + token["access_token"]
+    #url = 'https://api.github.com/user'
+    url = 'http://127.0.0.1:5002/api/me'
+    #access_token = "token " + token["access_token"]
+    access_token = "Bearer " + token["access_token"]
     headers = {"Authorization": access_token}
 
     resp = requests.get(url=url, headers=headers)
 
     user_data = resp.json()
-    user_name = user_data["login"]
+    #user_name = user_data["login"]
+    user_name = user_data["username"]
     print(f"\nUsername: {user_name}\n")
 
     existing_user = User.query.filter_by(
