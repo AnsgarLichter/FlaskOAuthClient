@@ -57,6 +57,17 @@ own_server = oauth.register(
     authorize_url='http://127.0.0.1:5002/oauth/authorize',
     api_base_url='http://127.0.0.1:5002/'
 )
+
+kadi_server = oauth.register(
+    name='kadi',
+    client_id=getenv('KADI_CLIENT_ID'),
+    client_secret=getenv('KADI_SECRET_ID'),
+    access_token_url='http://localhost:5000/oauth2server/oauth/token',
+    access_token_params=None,
+    authorize_url='http://localhost:5000/oauth2server/oauth/authorize',
+    api_base_url='http://localhost:5000/api/'
+)
+
 ##Initialize Dependencies
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
@@ -166,8 +177,7 @@ def logout():
 
 @app.route("/login/github")
 def login_github():
-    #github = oauth.create_client("github")
-    github = oauth.create_client("own")
+    github = oauth.create_client("github")
 
     redirect_url = url_for("authorize_github", _external=True)
 
@@ -175,23 +185,109 @@ def login_github():
 
 @app.route("/login/github/authorize")
 def authorize_github():
-    #github = oauth.create_client("github")
+    github = oauth.create_client("github")
+
+    token = github.authorize_access_token()
+    print(f"\nToken: {token}\n")
+
+    #Load users data
+    url = 'https://api.github.com/user'
+    access_token = "token " + token["access_token"]
+    headers = {"Authorization": access_token}
+
+    resp = requests.get(url=url, headers=headers)
+
+    user_data = resp.json()
+    user_name = user_data["login"]
+    print(f"\nUsername: {user_name}\n")
+
+    existing_user = User.query.filter_by(
+            username=user_name).first()
+    if existing_user:
+        existing_user.access_token = access_token
+        db.session.commit()
+        
+        login_user(existing_user)
+
+        return redirect(url_for("protected"))
+
+    new_user = User(username=user_name, access_token=token["access_token"])
+
+    db.session.add(new_user)
+    db.session.commit()
+
+    login_user(new_user)
+
+    return redirect(url_for("protected"))
+
+@app.route("/login/own")
+def login_own():
+    github = oauth.create_client("own")
+
+    redirect_url = url_for("authorize_own", _external=True)
+
+    return github.authorize_redirect(redirect_url)
+
+@app.route("/login/own/authorize")
+def authorize_own():
     github = oauth.create_client("own")
 
     token = github.authorize_access_token()
     print(f"\nToken: {token}\n")
 
     #Load users data
-    #url = 'https://api.github.com/user'
     url = 'http://127.0.0.1:5002/api/me'
-    #access_token = "token " + token["access_token"]
     access_token = "Bearer " + token["access_token"]
     headers = {"Authorization": access_token}
 
     resp = requests.get(url=url, headers=headers)
 
     user_data = resp.json()
-    #user_name = user_data["login"]
+    user_name = user_data["username"]
+    print(f"\nUsername: {user_name}\n")
+
+    existing_user = User.query.filter_by(
+            username=user_name).first()
+    if existing_user:
+        existing_user.access_token = access_token
+        db.session.commit()
+        
+        login_user(existing_user)
+
+        return redirect(url_for("protected"))
+
+    new_user = User(username=user_name, access_token=token["access_token"])
+
+    db.session.add(new_user)
+    db.session.commit()
+
+    login_user(new_user)
+
+    return redirect(url_for("protected"))
+
+@app.route("/login/kadi")
+def login_kadi():
+    github = oauth.create_client("kadi")
+
+    redirect_url = url_for("authorize_kadi", _external=True)
+
+    return github.authorize_redirect(redirect_url)
+
+@app.route("/login/kadi/authorize")
+def authorize_kadi():
+    github = oauth.create_client("kadi")
+
+    token = github.authorize_access_token()
+    print(f"\nToken: {token}\n")
+
+    #Load users data
+    url = 'http://localhost:5000/oauth2server/api/me'
+    access_token = "Bearer " + token["access_token"]
+    headers = {"Authorization": access_token}
+
+    resp = requests.get(url=url, headers=headers)
+
+    user_data = resp.json()
     user_name = user_data["username"]
     print(f"\nUsername: {user_name}\n")
 
