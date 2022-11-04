@@ -222,17 +222,17 @@ def authorize_github():
 
 @app.route("/login/own")
 def login_own():
-    github = oauth.create_client("own")
+    own = oauth.create_client("own")
 
     redirect_url = url_for("authorize_own", _external=True)
 
-    return github.authorize_redirect(redirect_url)
+    return own.authorize_redirect(redirect_url)
 
 @app.route("/login/own/authorize")
 def authorize_own():
-    github = oauth.create_client("own")
+    own = oauth.create_client("own")
 
-    token = github.authorize_access_token()
+    token = own.authorize_access_token()
     print(f"\nToken: {token}\n")
 
     #Load users data
@@ -267,21 +267,21 @@ def authorize_own():
 
 @app.route("/login/kadi")
 def login_kadi():
-    github = oauth.create_client("kadi")
+    kadi = oauth.create_client("kadi")
 
     redirect_url = url_for("authorize_kadi", _external=True)
 
-    return github.authorize_redirect(redirect_url)
+    return kadi.authorize_redirect(redirect_url)
 
 @app.route("/login/kadi/authorize")
 def authorize_kadi():
-    github = oauth.create_client("kadi")
+    kadi = oauth.create_client("kadi")
 
-    token = github.authorize_access_token()
+    token = kadi.authorize_access_token()
     print(f"\nToken: {token}\n")
 
     #Load users data
-    url = 'http://localhost:5000/oauth2server/api/me'
+    url = 'http://localhost:5000/api/records'
     access_token = "Bearer " + token["access_token"]
     headers = {"Authorization": access_token}
 
