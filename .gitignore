@@ -3,3 +3,9 @@ __pycache__
 
 ##Ignore al files from virtual environment
 flask-auth-tests
+
+##Ignore Environment's Secrets
+.env
+
+##Database
+instance
