@@ -1,3 +1,4 @@
+import datetime
 from flask import Flask, render_template, request, redirect, url_for
 
 ##Flask Login
@@ -23,6 +24,7 @@ import requests
 
 ##OAuth
 from authlib.integrations.flask_client import OAuth
+from authlib.integrations.requests_client import OAuth2Session
 
 ## Create Application
 app = Flask(__name__)
@@ -62,7 +64,7 @@ kadi_server = oauth.register(
     name='kadi',
     client_id=getenv('KADI_CLIENT_ID'),
     client_secret=getenv('KADI_SECRET_ID'),
-    access_token_url='http://localhost:5000/oauth2server/oauth/token',
+    access_token_url='http://localhost:5000/oauth2server/oauth/access_token',
     access_token_params=None,
     authorize_url='http://localhost:5000/oauth2server/oauth/authorize',
     api_base_url='http://localhost:5000/api/'
@@ -85,12 +87,13 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 
-## Flaks-Login has the requirement that an user class is implemented
+## Flask-Login has the requirement that an user class is implemented
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(20), nullable=False, unique=True)
     password = db.Column(db.String(80), nullable=True)
     access_token = db.Column(db.String(100), nullable=True)
+    refresh_token = db.Column(db.String(100), nullable=True)
 
 
 ##Sign Up Form
@@ -173,7 +176,7 @@ def login():
 def logout():
     logout_user()
     
-    return redirect(url_for("login"))
+    return redirect(url_for("welcome"))
 
 @app.route("/login/github")
 def login_github():
@@ -279,6 +282,12 @@ def authorize_kadi():
 
     token = kadi.authorize_access_token()
     print(f"\nToken: {token}\n")
+    kadi.token = token
+
+    expires_at = token["expires_at"]
+    print(f"\nToken expires at: {expires_at}\n")
+    expires_at_date = datetime.datetime.fromtimestamp(expires_at)
+    print(f"\n Expires at date: {expires_at_date}")
 
     #Load users data
     url = 'http://localhost:5000/api/records'
@@ -286,22 +295,21 @@ def authorize_kadi():
     headers = {"Authorization": access_token}
 
     resp = requests.get(url=url, headers=headers)
+    print(resp.json())
 
-    user_data = resp.json()
-    user_name = user_data["username"]
-    print(f"\nUsername: {user_name}\n")
-
+    user_name = "Ansgar"
     existing_user = User.query.filter_by(
             username=user_name).first()
     if existing_user:
-        existing_user.access_token = access_token
+        existing_user.access_token = token["access_token"]
+        existing_user.refresh_token = token["refresh_token"]
         db.session.commit()
         
         login_user(existing_user)
 
         return redirect(url_for("protected"))
 
-    new_user = User(username=user_name, access_token=token["access_token"])
+    new_user = User(username=user_name, access_token=token["access_token"], refresh_token=token["refresh_token"])
 
     db.session.add(new_user)
     db.session.commit()
@@ -314,3 +322,91 @@ def authorize_kadi():
 @login_required
 def protected():
     return render_template("protected.html")
+
+@app.route("/kadi/revoke/access_token")
+@login_required
+def revoke_kadi_access_token():
+    kadi = oauth.create_client("kadi")
+
+    client = OAuth2Session(
+        getenv('KADI_CLIENT_ID'),
+        getenv('KADI_SECRET_ID'),
+    )
+    
+    headers = {"Authorization": "Bearer " + current_user.access_token}
+
+    client.revoke_token(
+        "http://localhost:5000/oauth2server/oauth/access_token/revoke",
+        token=current_user.access_token,
+        token_type_hint="access_token",#
+        headers=headers
+    )
+
+    return redirect("protected")
+
+@app.route("/kadi/revoke/refresh_token")
+@login_required
+def revoke_kadi_refresh_token():
+    kadi = oauth.create_client("kadi")
+
+    client = OAuth2Session(
+        getenv('KADI_CLIENT_ID'),
+        getenv('KADI_SECRET_ID'),
+    )
+    
+    headers = {"Authorization": "Bearer " + current_user.access_token}
+
+    client.revoke_token(
+        "http://localhost:5000/oauth2server/oauth/access_token/revoke",
+        token=current_user.refresh_token,
+        token_type_hint="refresh_token",
+        headers=headers
+    )
+
+    return redirect("protected")
+
+@app.route("/refresh")
+@login_required
+def refresh_kadi_access_token():
+    kadi = oauth.create_client("kadi")
+
+    client = OAuth2Session(
+        getenv('KADI_CLIENT_ID'),
+        getenv('KADI_SECRET_ID'),
+    )
+    
+    headers = {"Authorization": "Bearer " + current_user.access_token}
+
+    new_access_token = client.refresh_token(
+        url="http://localhost:5000/oauth2server/oauth/access_token/refresh",
+        refresh_token=current_user.refresh_token
+    )
+    print(f"New access token {new_access_token}")
+
+    """  kadi.framework.update_token(
+        kadi.token,
+        refresh_token=current_user.access_token,
+        access_token=current_user.refresh_token,
+    ) """
+
+    """ kadi.framework.update_token(
+        token=kadi.token,
+        url="http://localhost:5000/oauth2server/oauth/access_token/refresh",
+        refresh_token=current_user.access_token
+    ) """
+
+
+    return redirect("protected")
+
+
+@app.route("/load_records")
+@login_required
+def load_records():
+    url = 'http://localhost:5000/api/records'
+    access_token = "Bearer " + current_user.access_token
+    headers = {"Authorization": access_token}
+
+    resp = requests.get(url=url, headers=headers)
+    print(resp.json())
+
+    return redirect("protected")
