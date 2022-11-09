@@ -288,11 +288,6 @@ def authorize_kadi():
     expires_at_date = datetime.datetime.fromtimestamp(expires_at)
     print(f"\n Expires at date: {expires_at_date}")
 
-    #Load users data
-    url = 'http://localhost:5000/api/records'
-    access_token = "Bearer " + token["access_token"]
-    headers = {"Authorization": access_token}
-
     user_name = "admin"
     existing_user = User.query.filter_by(
             username=user_name).first()
