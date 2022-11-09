@@ -17,7 +17,6 @@ from flask_bcrypt import Bcrypt
 
 ##Environemnt Variables
 from os import getenv
-from dotenv import load_dotenv
 
 import requests
 
