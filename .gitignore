@@ -9,3 +9,6 @@ flask-auth-tests
 
 ##Database
 instance
+
+##Visual Studio Code Files
+.vscode
