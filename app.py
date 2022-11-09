@@ -293,7 +293,7 @@ def authorize_kadi():
     access_token = "Bearer " + token["access_token"]
     headers = {"Authorization": access_token}
 
-    user_name = "Ansgar"
+    user_name = "admin"
     existing_user = User.query.filter_by(
             username=user_name).first()
     if existing_user:
