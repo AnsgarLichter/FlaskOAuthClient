@@ -52,8 +52,8 @@ github = oauth.register(
 
 own_server = oauth.register(
     name='own',
-    client_id=getenv('OWN_CLIENT_ID'),
-    client_secret=getenv('OWN_SECRET_ID'),
+    client_id='y0tvY0Pmxjt67ILUT9pGaXuh',
+    client_secret='FtIDRex3sFKWKXGVgSBpWZvkuXI27UQiFX4VuD7AItgS0AWK',
     access_token_url='http://127.0.0.1:5002/oauth/token',
     access_token_params=None,
     authorize_url='http://127.0.0.1:5002/oauth/authorize',
@@ -67,7 +67,7 @@ kadi_server = oauth.register(
     access_token_url='http://localhost:5000/oauth2server/oauth/access_token',
     access_token_params=None,
     authorize_url='http://localhost:5000/oauth2server/oauth/authorize',
-    api_base_url='http://localhost:5000/api/'
+    api_base_url='http://localhost:5000/'
 )
 
 ##Initialize Dependencies
@@ -228,7 +228,6 @@ def login_own():
     own = oauth.create_client("own")
 
     redirect_url = url_for("authorize_own", _external=True)
-
     return own.authorize_redirect(redirect_url)
 
 @app.route("/login/own/authorize")
@@ -272,7 +271,8 @@ def authorize_own():
 def login_kadi():
     kadi = oauth.create_client("kadi")
 
-    redirect_url = url_for("authorize_kadi", _external=True)
+    #redirect_url = url_for("authorize_kadi", _external=True)
+    redirect_url = "http://127.0.0.1:5001/login/kadi/authorize"
 
     return kadi.authorize_redirect(redirect_url)
 
@@ -293,9 +293,6 @@ def authorize_kadi():
     url = 'http://localhost:5000/api/records'
     access_token = "Bearer " + token["access_token"]
     headers = {"Authorization": access_token}
-
-    resp = requests.get(url=url, headers=headers)
-    print(resp.json())
 
     user_name = "Ansgar"
     existing_user = User.query.filter_by(
