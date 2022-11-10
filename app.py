@@ -270,7 +270,6 @@ def authorize_own():
 def login_kadi():
     kadi = oauth.create_client("kadi")
 
-    #redirect_url = url_for("authorize_kadi", _external=True)
     redirect_url = "http://127.0.0.1:5001/login/kadi/authorize"
 
     return kadi.authorize_redirect(redirect_url)
@@ -317,8 +316,6 @@ def protected():
 @app.route("/kadi/revoke/access_token")
 @login_required
 def revoke_kadi_access_token():
-    kadi = oauth.create_client("kadi")
-
     client = OAuth2Session(
         getenv('KADI_CLIENT_ID'),
         getenv('KADI_SECRET_ID'),
@@ -338,8 +335,6 @@ def revoke_kadi_access_token():
 @app.route("/kadi/revoke/refresh_token")
 @login_required
 def revoke_kadi_refresh_token():
-    kadi = oauth.create_client("kadi")
-
     client = OAuth2Session(
         getenv('KADI_CLIENT_ID'),
         getenv('KADI_SECRET_ID'),
@@ -359,33 +354,17 @@ def revoke_kadi_refresh_token():
 @app.route("/refresh")
 @login_required
 def refresh_kadi_access_token():
-    kadi = oauth.create_client("kadi")
-
     client = OAuth2Session(
         getenv('KADI_CLIENT_ID'),
         getenv('KADI_SECRET_ID'),
     )
-    
-    headers = {"Authorization": "Bearer " + current_user.access_token}
 
     new_access_token = client.refresh_token(
         url="http://localhost:5000/oauth2server/oauth/access_token/refresh",
         refresh_token=current_user.refresh_token
     )
+
     print(f"New access token {new_access_token}")
-
-    """  kadi.framework.update_token(
-        kadi.token,
-        refresh_token=current_user.access_token,
-        access_token=current_user.refresh_token,
-    ) """
-
-    """ kadi.framework.update_token(
-        token=kadi.token,
-        url="http://localhost:5000/oauth2server/oauth/access_token/refresh",
-        refresh_token=current_user.access_token
-    ) """
-
 
     return redirect("protected")
 
