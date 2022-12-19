@@ -1,40 +1,40 @@
 import datetime
 from flask import Flask, render_template, request, redirect, url_for
 
-##Flask Login
+# Flask Login
 from flask_login import LoginManager, UserMixin, login_required, login_user, logout_user, current_user
 
-##SQLAlchemy
+# SQLAlchemy
 from flask_sqlalchemy import SQLAlchemy
 
-##Forms
+# Forms
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import InputRequired, Length, ValidationError
 
-##Password Hash
+# Password Hash
 from flask_bcrypt import Bcrypt
 
-##Environemnt Variables
+# Environemnt Variables
 from os import getenv
 
 import requests
 
 
-##OAuth
+# OAuth
 from authlib.integrations.flask_client import OAuth
 from authlib.integrations.requests_client import OAuth2Session
 
-## Create Application
+# Create Application
 app = Flask(__name__)
 
 
-##App Config
+# App Config
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
 app.config["SECRET_KEY"] = "secret"
 
 
-##OAuth
+# OAuth
 oauth = OAuth(app)
 
 github = oauth.register(
@@ -69,24 +69,24 @@ kadi_server = oauth.register(
     api_base_url='http://localhost:5000/'
 )
 
-##Initialize Dependencies
+# Initialize Dependencies
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 
 
-## Initialize Login Manager
+# Initialize Login Manager
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
 
 
-## Provide User Loader Callback for Login Manager of Flask-Login
+# Provide User Loader Callback for Login Manager of Flask-Login
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
 
-## Flask-Login has the requirement that an user class is implemented
+# Flask-Login has the requirement that an user class is implemented
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(20), nullable=False, unique=True)
@@ -95,18 +95,18 @@ class User(db.Model, UserMixin):
     refresh_token = db.Column(db.String(100), nullable=True)
 
 
-##Sign Up Form
+# Sign Up Form
 class SignUpForm(FlaskForm):
     username = StringField(validators=[
-        InputRequired(), 
+        InputRequired(),
         Length(min=4, max=20),
-        ],
+    ],
         render_kw={"placeholder": "Username"})
-        
+
     password = PasswordField(validators=[
-        InputRequired(), 
+        InputRequired(),
         Length(min=4, max=20),
-        ],
+    ],
         render_kw={"placeholder": "Password"})
 
     submit = SubmitField("Register")
@@ -116,30 +116,32 @@ class SignUpForm(FlaskForm):
             username=username.data).first()
 
         if existing_user_username:
-            raise ValidationError("That username already exists! Please choose a different one")
+            raise ValidationError(
+                "That username already exists! Please choose a different one")
 
 
-##Login Form
+# Login Form
 class LoginForm(FlaskForm):
     username = StringField(validators=[
-        InputRequired(), 
+        InputRequired(),
         Length(min=4, max=20),
-        ],
+    ],
         render_kw={"placeholder": "Username"})
-        
+
     password = PasswordField(validators=[
-        InputRequired(), 
+        InputRequired(),
         Length(min=4, max=20),
-        ],
+    ],
         render_kw={"placeholder": "Password"})
 
     submit = SubmitField("Login")
-    
 
-##Actual views / route definitions of the application
+
+# Actual views / route definitions of the application
 @app.route("/")
-def welcome(): 
+def welcome():
     return render_template("main.html")
+
 
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
@@ -154,8 +156,8 @@ def signup():
 
         return redirect(url_for("login"))
 
-        
     return render_template("signup.html", form=form)
+
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -171,11 +173,13 @@ def login():
 
     return render_template("login.html", form=form)
 
+
 @app.route("/logout", methods=["GET", "POST"])
 def logout():
     logout_user()
-    
+
     return redirect(url_for("welcome"))
+
 
 @app.route("/login/github")
 def login_github():
@@ -185,6 +189,7 @@ def login_github():
 
     return github.authorize_redirect(redirect_url)
 
+
 @app.route("/login/github/authorize")
 def authorize_github():
     github = oauth.create_client("github")
@@ -192,7 +197,7 @@ def authorize_github():
     token = github.authorize_access_token()
     print(f"\nToken: {token}\n")
 
-    #Load users data
+    # Load users data
     url = 'https://api.github.com/user'
     access_token = "token " + token["access_token"]
     headers = {"Authorization": access_token}
@@ -204,11 +209,11 @@ def authorize_github():
     print(f"\nUsername: {user_name}\n")
 
     existing_user = User.query.filter_by(
-            username=user_name).first()
+        username=user_name).first()
     if existing_user:
         existing_user.access_token = access_token
         db.session.commit()
-        
+
         login_user(existing_user)
 
         return redirect(url_for("protected"))
@@ -222,12 +227,14 @@ def authorize_github():
 
     return redirect(url_for("protected"))
 
+
 @app.route("/login/own")
 def login_own():
     own = oauth.create_client("own")
 
     redirect_url = url_for("authorize_own", _external=True)
     return own.authorize_redirect(redirect_url)
+
 
 @app.route("/login/own/authorize")
 def authorize_own():
@@ -236,7 +243,7 @@ def authorize_own():
     token = own.authorize_access_token()
     print(f"\nToken: {token}\n")
 
-    #Load users data
+    # Load users data
     url = 'http://127.0.0.1:5002/api/me'
     access_token = "Bearer " + token["access_token"]
     headers = {"Authorization": access_token}
@@ -248,11 +255,11 @@ def authorize_own():
     print(f"\nUsername: {user_name}\n")
 
     existing_user = User.query.filter_by(
-            username=user_name).first()
+        username=user_name).first()
     if existing_user:
         existing_user.access_token = access_token
         db.session.commit()
-        
+
         login_user(existing_user)
 
         return redirect(url_for("protected"))
@@ -266,6 +273,7 @@ def authorize_own():
 
     return redirect(url_for("protected"))
 
+
 @app.route("/login/kadi")
 def login_kadi():
     kadi = oauth.create_client("kadi")
@@ -273,6 +281,7 @@ def login_kadi():
     redirect_url = "http://127.0.0.1:5001/login/kadi/authorize"
 
     return kadi.authorize_redirect(redirect_url)
+
 
 @app.route("/login/kadi/authorize")
 def authorize_kadi():
@@ -289,17 +298,18 @@ def authorize_kadi():
 
     user_name = "admin"
     existing_user = User.query.filter_by(
-            username=user_name).first()
+        username=user_name).first()
     if existing_user:
         existing_user.access_token = token["access_token"]
         existing_user.refresh_token = token["refresh_token"]
         db.session.commit()
-        
+
         login_user(existing_user)
 
         return redirect(url_for("protected"))
 
-    new_user = User(username=user_name, access_token=token["access_token"], refresh_token=token["refresh_token"])
+    new_user = User(username=user_name,
+                    access_token=token["access_token"], refresh_token=token["refresh_token"])
 
     db.session.add(new_user)
     db.session.commit()
@@ -308,10 +318,12 @@ def authorize_kadi():
 
     return redirect(url_for("protected"))
 
+
 @app.route("/protected")
 @login_required
 def protected():
     return render_template("protected.html")
+
 
 @app.route("/kadi/revoke/access_token")
 @login_required
@@ -320,17 +332,18 @@ def revoke_kadi_access_token():
         getenv('KADI_CLIENT_ID'),
         getenv('KADI_SECRET_ID'),
     )
-    
+
     headers = {"Authorization": "Bearer " + current_user.access_token}
 
     client.revoke_token(
         "http://localhost:5000/oauth2server/oauth/access_token/revoke",
         token=current_user.access_token,
-        token_type_hint="access_token",#
+        token_type_hint="access_token",
         headers=headers
     )
 
-    return redirect("protected")
+    return redirect(url_for("protected"))
+
 
 @app.route("/kadi/revoke/refresh_token")
 @login_required
@@ -339,7 +352,7 @@ def revoke_kadi_refresh_token():
         getenv('KADI_CLIENT_ID'),
         getenv('KADI_SECRET_ID'),
     )
-    
+
     headers = {"Authorization": "Bearer " + current_user.access_token}
 
     client.revoke_token(
@@ -349,7 +362,8 @@ def revoke_kadi_refresh_token():
         headers=headers
     )
 
-    return redirect("protected")
+    return redirect(url_for("protected"))
+
 
 @app.route("/refresh")
 @login_required
@@ -366,7 +380,11 @@ def refresh_kadi_access_token():
 
     print(f"New access token {new_access_token}")
 
-    return redirect("protected")
+    current_user.access_token = new_access_token["access_token"]
+    current_user.refresh_token = new_access_token["refresh_token"]
+    db.session.commit()
+
+    return redirect(url_for("protected"))
 
 
 @app.route("/load_records")
@@ -379,4 +397,4 @@ def load_records():
     resp = requests.get(url=url, headers=headers)
     print(resp.json())
 
-    return redirect("protected")
+    return redirect(url_for("protected"))
