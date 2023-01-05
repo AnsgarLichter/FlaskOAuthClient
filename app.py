@@ -336,7 +336,7 @@ def revoke_kadi_access_token():
     headers = {"Authorization": "Bearer " + current_user.access_token}
 
     client.revoke_token(
-        "http://localhost:5000/oauth2server/oauth/access_token/revoke",
+        "http://localhost:5000/oauth2server/oauth/token/revoke",
         token=current_user.access_token,
         token_type_hint="access_token",
         headers=headers
@@ -356,7 +356,7 @@ def revoke_kadi_refresh_token():
     headers = {"Authorization": "Bearer " + current_user.access_token}
 
     client.revoke_token(
-        "http://localhost:5000/oauth2server/oauth/access_token/revoke",
+        "http://localhost:5000/oauth2server/oauth/token/revoke",
         token=current_user.refresh_token,
         token_type_hint="refresh_token",
         headers=headers
